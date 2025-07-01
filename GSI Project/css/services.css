@@ -1,0 +1,106 @@
+/* ==== VARIABLES ==== */
+:root {
+    --primary-color: #ff0606;
+    --link-color: #ffffff;
+  }
+  
+  .header {
+    height: var(--fixed-header-height);
+    padding: 0 1.7rem;
+  }
+  
+  /* ==== NAV ==== */
+  .nav {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  /* ==== LOGO ==== */
+  .logo h2 {
+    font-size: var(--h2-font-size);
+    color: var(--primary-color);
+  }
+  /* ====  NAV-MENU  ==== */
+  .nav_menu_list {
+    display: flex;
+    align-items: center;
+  }
+  .nav_menu_list .nav_menu_item {
+    margin: 0 2rem;
+  }
+  .nav_menu_item .nav_menu_link {
+    font-size: 16.5px;
+    line-height: 27px;
+    color: var(--link-color);
+    text-transform: capitalize;
+    letter-spacing: 0.5px;
+  }
+  .nav_menu_link:hover {
+    color: var(--primary-color);
+  }
+  .toggle_btn {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--lg-heading);
+    z-index: 4;
+  }
+  .nav_menu,
+  .close_btn {
+    display: none;
+  }
+  .show {
+    right: 3% !important;
+  }
+  
+  /* ==== MAP SECTION ==== */
+  .map_section {
+    padding: 30px 20px;
+    max-width: 1200px;
+    margin: auto;
+  }
+  
+  .map_section h2 {
+    color: var(--primary-color);
+  }
+  
+  #map {
+    height: 500px;
+    margin: 20px 0;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+  }
+  
+  input[type="text"] {
+    padding: 10px;
+    width: 300px;
+    max-width: 90%;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  footer {
+    text-align: center;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 15px;
+    margin-top: 40px;
+  }
+  
+  /* ==== RESPONSIVE ==== */
+  @media (max-width: 768px) {
+    .toggle_btn {
+      display: block;
+    }
+  
+    .nav_menu_list {
+      align-items: flex-start;
+      padding-left: 20px;
+    }
+  
+    .nav {
+      padding: 15px 20px;
+    }
+  }
+  

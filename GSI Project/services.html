@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GIS Services - NATMO</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="css/services.css" />
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="container header">
+    <!-- ==== NAVBAR ==== -->
+    <nav class="nav">
+      <div class="logo">
+        <h2>NATMO.</h2>
+      </div>
+
+      <div class="nav_menu" id="nav_menu">
+        <button class="close_btn" id="close_btn">
+          <i class="ri-close-fill"></i>
+        </button>
+
+        <ul class="nav_menu_list">
+          <li class="nav_menu_item">
+            <a href="login.html" class="nav_menu_link">Login</a>
+          </li>
+          <li class="nav_menu_item">
+            <a href="#" class="nav_menu_link">about</a>
+          </li>
+          <li class="nav_menu_item">
+            <a href="services.html" class="nav_menu_link">map services</a>
+          </li>
+          <li class="nav_menu_item">
+            <a href="#" class="nav_menu_link">contact</a>
+          </li>
+        </ul>
+      </div>
+
+      <button class="toggle_btn" id="toggle_btn">
+        <i class="ri-menu-line"></i>
+      </button>
+    </nav>
+
+  <!-- Map + Search Section -->
+  <section class="map_section">
+    <h2>GIS Layer Services</h2>
+    
+    <!-- Category and Subcategory Dropdowns -->
+    <div class="category-menu" style="margin: 20px 0;">
+      <h3>Select Category</h3>
+      <select id="category-select">
+        <option value="">-- Select Category --</option>
+        <option value="boundaries">Boundaries</option>
+        <option value="infrastructure">Infrastructure</option>
+        <option value="transportation">Transportation</option>
+        <option value="health">Health</option>
+        <option value="education">Education</option>
+        <option value="market">Market</option>
+        <option value="lifestyle">Lifestyle</option>
+        <option value="industries">Industries</option>
+        <option value="water_source">Water Source</option>
+        <option value="emergency">Emergency Services</option>
+      </select>
+      <select id="subcategory-select">
+        <option value="">-- Select Subcategory --</option>
+      </select>
+    </div>
+    
+    <!-- Find Nearby Banks Search Form -->
+    <div class="search-nearby-form" style="margin: 20px 0;">
+      <h3>Find Nearby Banks</h3>
+      <label>
+        Latitude:
+        <input type="number" id="nearby-lat" step="any" value="22.5726" />
+      </label>
+      <label>
+        Longitude:
+        <input type="number" id="nearby-lng" step="any" value="88.3639" />
+      </label>
+      <label>
+        Radius (meters):
+        <input type="number" id="nearby-radius" value="10000" />
+      </label>
+      <button id="search-btn">Search</button>
+      <div id="nearby-results"></div>
+    </div>
+    
+    <div id="map"></div>
+    <input type="text" id="searchBox" placeholder="Search features like 'bank', 'road'..." />
+    <p id="searchResult"></p>
+  </section>
+
+  <footer>
+    &copy; 2025 NATMO | Department of Science & Technology, Government of India
+  </footer>
+
+  <!-- JS Includes -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Toggle Nav Logic
+    const toggleBtn = document.getElementById("toggle_btn");
+    const closeBtn = document.getElementById("close_btn");
+    const navMenu = document.getElementById("nav_menu");
+
+    toggleBtn.onclick = () => navMenu.classList.add("show");
+    closeBtn.onclick = () => navMenu.classList.remove("show");
+
+    // Map initialization
+    const map = L.map('map').setView([22.5726, 88.3639], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let searchMarkers = [];
+
+    // Blue icon for OSM banks
+    const osmBankIcon = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    // Red icon for custom banks
+    const customBankIcon = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    // Subcategory options for each category
+    const subcategories = {
+      boundaries: [
+        { value: 'district', label: 'District' },
+        { value: 'ulb', label: 'ULB' },
+        { value: 'slums', label: 'Slums' }
+      ],
+      infrastructure: [
+        { value: 'road', label: 'Road' },
+        { value: 'sanitation', label: 'Sanitation' },
+        { value: 'drainage', label: 'Drainage' },
+        { value: 'water_source', label: 'Water Source' },
+        { value: 'buildings', label: 'Buildings' },
+        { value: 'others', label: 'Others' }
+      ],
+      transportation: [
+        { value: 'railways', label: 'Railways' },
+        { value: 'roads', label: 'Roads' }
+      ],
+      health: [
+        { value: 'hospitals', label: 'Hospitals' },
+        { value: 'diagnostic_centres', label: 'Diagnostic Centres' },
+        { value: 'clinics', label: 'Clinics' }
+      ],
+      education: [
+        { value: 'private', label: 'Private' },
+        { value: 'government', label: 'Government' }
+      ],
+      market: [
+        { value: 'shops', label: 'Shops' },
+        { value: 'shopping_complex', label: 'Shopping Complex' }
+      ],
+      lifestyle: [
+        { value: 'hotels', label: 'Hotels' },
+        { value: 'lodge', label: 'Lodge' },
+        { value: 'restaurant', label: 'Restaurant' },
+        { value: 'function_halls', label: 'Function Halls' }
+      ],
+      industries: [
+        { value: 'mills', label: 'Mills' },
+        { value: 'workshops', label: 'Workshops' }
+      ],
+      water_source: [
+        { value: 'river', label: 'River' },
+        { value: 'other_sources', label: 'Other Sources' }
+      ],
+      emergency: [
+        { value: 'fire_stations', label: 'Fire Stations' },
+        { value: 'banks', label: 'Banks' }
+      ]
+    };
+
+    // Populate subcategory dropdown based on category
+    document.getElementById('category-select').addEventListener('change', function() {
+      const cat = this.value;
+      const subcatSelect = document.getElementById('subcategory-select');
+      subcatSelect.innerHTML = '<option value="">-- Select Subcategory --</option>';
+      if (subcategories[cat]) {
+        subcategories[cat].forEach(sub => {
+          const opt = document.createElement('option');
+          opt.value = sub.value;
+          opt.textContent = sub.label;
+          subcatSelect.appendChild(opt);
+        });
+      }
+    });
+
+    // Map subcategory to OSM tag/query
+    function getOSMQueryForSubcategory(subcat, bbox) {
+      switch(subcat) {
+        case 'banks': return `[out:json];node["amenity"="bank"](${bbox});out;`;
+        case 'district': return `[out:json];relation["boundary"="administrative"]["admin_level"="6"](${bbox});out;`;
+        case 'ulb': return `[out:json];relation["boundary"="administrative"]["admin_level"="8"](${bbox});out;`;
+        case 'slums': return `[out:json];way["landuse"="slum"](${bbox});out;`;
+        case 'road': return `[out:json];way["highway"](${bbox});out;`;
+        case 'sanitation': return `[out:json];node["amenity"="toilets"](${bbox});out;`;
+        case 'drainage': return `[out:json];way["man_made"="drain"](${bbox});out;`;
+        case 'water_source': return `[out:json];node["man_made"="water_well"](${bbox});out;`;
+        case 'buildings': return `[out:json];way["building"](${bbox});out;`;
+        case 'railways': return `[out:json];way["railway"](${bbox});out;`;
+        case 'roads': return `[out:json];way["highway"](${bbox});out;`;
+        case 'hospitals': return `[out:json];node["amenity"="hospital"](${bbox});out;`;
+        case 'diagnostic_centres': return `[out:json];node["healthcare"="diagnostic"](${bbox});out;`;
+        case 'clinics': return `[out:json];node["amenity"="clinic"](${bbox});out;`;
+        case 'private': return `[out:json];node["amenity"="school"]["operator:type"="private"](${bbox});out;`;
+        case 'government': return `[out:json];node["amenity"="school"]["operator:type"="public"](${bbox});out;`;
+        case 'shops': return `[out:json];node["shop"](${bbox});out;`;
+        case 'shopping_complex': return `[out:json];way["shop"="mall"](${bbox});out;`;
+        case 'hotels': return `[out:json];node["tourism"="hotel"](${bbox});out;`;
+        case 'lodge': return `[out:json];node["tourism"="guest_house"](${bbox});out;`;
+        case 'restaurant': return `[out:json];node["amenity"="restaurant"](${bbox});out;`;
+        case 'function_halls': return `[out:json];node["amenity"="community_centre"](${bbox});out;`;
+        case 'mills': return `[out:json];way["industrial"="mill"](${bbox});out;`;
+        case 'workshops': return `[out:json];way["craft"](${bbox});out;`;
+        case 'river': return `[out:json];way["waterway"="river"](${bbox});out;`;
+        case 'other_sources': return `[out:json];node["natural"="water"](${bbox});out;`;
+        case 'fire_stations': return `[out:json];node["amenity"="fire_station"](${bbox});out;`;
+        default: return '';
+      }
+    }
+
+    // Update search logic to use selected subcategory
+    document.getElementById('search-btn').addEventListener('click', async function(e) {
+      e.preventDefault();
+      // Remove all previous markers from the map
+      if (Array.isArray(searchMarkers)) {
+        searchMarkers.forEach(marker => map.removeLayer(marker));
+      }
+      searchMarkers = [];
+
+      const lat = parseFloat(document.getElementById('nearby-lat').value);
+      const lng = parseFloat(document.getElementById('nearby-lng').value);
+      const radius = document.getElementById('nearby-radius').value;
+      const category = document.getElementById('category-select').value;
+      const subcat = document.getElementById('subcategory-select').value;
+      const bbox = "22.45,88.25,22.65,88.45";
+
+      if (!subcat) {
+        document.getElementById('nearby-results').innerHTML = '<span style="color:red;">Please select a subcategory.</span>';
+        return;
+      }
+
+      // OSM query for selected subcategory
+      const osmQuery = getOSMQueryForSubcategory(subcat, bbox);
+      const osmUrl = osmQuery ? ("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(osmQuery)) : null;
+      // Backend data from locations table (within radius, category, subcategory)
+      const locationsUrl = `http://localhost:3000/api/locations/nearby?latitude=${lat}&longitude=${lng}&radius=${radius}&category=${category}&subcategory=${subcat}`;
+
+      let foundCount = 0;
+      let firstLatLng = null;
+
+      try {
+        // Fetch OSM and backend data in parallel
+        const [osmData, backendData] = await Promise.all([
+          osmUrl ? fetch(osmUrl).then(r => r.json()) : Promise.resolve({ elements: [] }),
+          fetch(locationsUrl).then(r => r.json())
+        ]);
+
+        // Add OSM data markers (blue)
+        if (Array.isArray(osmData.elements) && osmData.elements.length > 0) {
+          osmData.elements.forEach(el => {
+            let lat = el.lat || (el.center && el.center.lat);
+            let lon = el.lon || (el.center && el.center.lon);
+            if (lat && lon) {
+              const marker = L.marker([lat, lon], { icon: osmBankIcon })
+                .bindPopup(el.tags && el.tags.name ? el.tags.name : subcat.toUpperCase());
+              marker.addTo(map);
+              searchMarkers.push(marker);
+              foundCount++;
+              if (!firstLatLng) firstLatLng = marker.getLatLng();
+            }
+          });
+        }
+
+        // Add backend data markers (red)
+        if (Array.isArray(backendData) && backendData.length > 0) {
+          backendData.forEach(loc => {
+            if (
+              loc.latitude && loc.longitude &&
+              loc.category && loc.subcategory &&
+              loc.category.toLowerCase() === category.toLowerCase() &&
+              loc.subcategory.toLowerCase() === subcat.toLowerCase()
+            ) {
+              const marker = L.marker([loc.latitude, loc.longitude], { icon: customBankIcon })
+                .bindPopup(loc.name);
+              marker.addTo(map);
+              searchMarkers.push(marker);
+              foundCount++;
+              if (!firstLatLng) firstLatLng = marker.getLatLng();
+            }
+          });
+        }
+
+        if (foundCount === 0) {
+          document.getElementById('nearby-results').innerHTML = "<span style='color:red;'>No features found in this area.</span>";
+        } else {
+          document.getElementById('nearby-results').innerHTML = `<span style='color:green;'>Found ${foundCount} feature(s).</span>`;
+          if (firstLatLng) {
+            map.setView(firstLatLng, 12);
+          }
+        }
+      } catch (err) {
+        document.getElementById('nearby-results').innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+        console.error(err);
+      }
+    });
+
+    // OSM banks: use blue icon
+    async function fetchOSMBanks(bbox) {
+      const query = `
+        [out:json];
+        node["amenity"="bank"](${bbox});
+        out;
+      `;
+      const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+      const response = await fetch(url);
+      const data = await response.json();
+      return L.layerGroup(
+        data.elements.map(bank =>
+          L.marker([bank.lat, bank.lon], { icon: customBankIcon })
+            .bindPopup(bank.tags.name || "OSM Bank")
+        )
+      );
+    }
+
+    // Function to fetch OSM hospitals using Overpass API
+    async function fetchOSMHospitals(bbox) {
+      // bbox format: south,west,north,east (e.g., Mumbai: 18.8,72.7,19.3,73.0)
+      const query = `
+        [out:json];
+        node["amenity"="hospital"](${bbox});
+        out;
+      `;
+      const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+      const response = await fetch(url);
+      const data = await response.json();
+      // Create a Leaflet layer group with markers for each hospital
+      return L.layerGroup(
+        data.elements.map(hospital =>
+          L.marker([hospital.lat, hospital.lon], { title: hospital.tags.name || "OSM Hospital", icon: undefined })
+            .bindPopup(hospital.tags.name || "OSM Hospital")
+        )
+      );
+    }
+
+    // Add OSM Banks, OSM Hospitals, and Custom Banks Layers for Mumbai
+    const mumbaiBbox = "18.8,72.7,19.3,73.0";
+    Promise.all([
+      fetchOSMBanks(mumbaiBbox),
+      fetchOSMHospitals(mumbaiBbox)
+    ]).then(([osmBanksLayer, osmHospitalsLayer]) => {
+      osmBanksLayer.addTo(map);
+      osmHospitalsLayer.addTo(map);
+      L.control.layers(null, {
+        "OSM Banks": osmBanksLayer,
+        "OSM Hospitals": osmHospitalsLayer
+      }).addTo(map);
+    });
+  </script>
+</body>
+</html>

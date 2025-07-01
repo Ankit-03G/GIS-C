@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PostGIS API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { padding: 5px; width: 200px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        #results { margin-top: 20px; padding: 10px; border: 1px solid #ddd; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Server Status</h2>
+        <div id="serverStatus">Checking server status...</div>
+
+        <h2>Add New Location</h2>
+        <div class="form-group">
+            <label for="name">Location Name:</label>
+            <input type="text" id="name" placeholder="Enter location name">
+        </div>
+        <div class="form-group">
+            <label for="latitude">Latitude:</label>
+            <input type="number" id="latitude" step="any" placeholder="Enter latitude">
+        </div>
+        <div class="form-group">
+            <label for="longitude">Longitude:</label>
+            <input type="number" id="longitude" step="any" placeholder="Enter longitude">
+        </div>
+        <button onclick="addLocation()">Add Location</button>
+
+        <h2>Find Nearby Locations</h2>
+        <div class="form-group">
+            <label for="searchLatitude">Search Latitude:</label>
+            <input type="number" id="searchLatitude" step="any" placeholder="Enter latitude">
+        </div>
+        <div class="form-group">
+            <label for="searchLongitude">Search Longitude:</label>
+            <input type="number" id="searchLongitude" step="any" placeholder="Enter longitude">
+        </div>
+        <div class="form-group">
+            <label for="radius">Radius (meters):</label>
+            <input type="number" id="radius" value="1000" placeholder="Enter radius">
+        </div>
+        <button onclick="findNearbyLocations()">Find Nearby</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://localhost:3000/api/locations/nearby?latitude=0&longitude=0&radius=1000');
+                document.getElementById('serverStatus').innerHTML = '<span class="success">Server is running</span>';
+            } catch (error) {
+                document.getElementById('serverStatus').innerHTML = '<span class="error">Server is not running. Please start the server.</span>';
+            }
+        }
+
+        // Check server status every 5 seconds
+        checkServerStatus();
+        setInterval(checkServerStatus, 5000);
+
+        async function addLocation() {
+            const name = document.getElementById('name').value;
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+
+            if (!name || !latitude || !longitude) {
+                document.getElementById('results').innerHTML = '<span class="error">Please fill in all fields</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/locations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, latitude, longitude })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.details || 'Server error');
+                }
+
+                const data = await response.json();
+                document.getElementById('results').innerHTML = `<span class="success">Location added successfully! ID: ${data.id}</span>`;
+            } catch (error) {
+                document.getElementById('results').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+
+        async function findNearbyLocations() {
+            const latitude = document.getElementById('searchLatitude').value;
+            const longitude = document.getElementById('searchLongitude').value;
+            const radius = document.getElementById('radius').value;
+
+            if (!latitude || !longitude || !radius) {
+                document.getElementById('results').innerHTML = '<span class="error">Please fill in all fields</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/locations/nearby?latitude=${latitude}&longitude=${longitude}&radius=${radius}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.details || 'Server error');
+                }
+
+                const data = await response.json();
+                document.getElementById('results').innerHTML = `
+                    <h3>Nearby Locations:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('results').innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html> 
